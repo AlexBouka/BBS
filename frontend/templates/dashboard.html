@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Bus Booking System{% endblock %}
+
+{% block nav_links %}
+<div class="nav-links">
+    <p id="userInfo">Loading...</p>
+    <button onclick="handleLogout()" class="nav-links__btn">Logout</button>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <div class="dashboard-card">
+        <h1 class="dashboard-card__title">Welcome to Your Dashboard</h1>
+
+        <!-- Server can inject initial data -->
+        {% if initial_data %}
+        <div class="info-box">
+            <p><strong>Server message:</strong> {{ initial_data.message }}</p>
+            <p><strong>Server Time:</strong> {{ initial_data.timestamp }}</p>
+        </div>
+        {% endif %}
+
+        <!-- JavaScript will populate this -->
+        <div id="userDetails" class="user-details">
+            <p>Loading user details...</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load user data dynamically (Javascript + API)
+    async function loadUserData() {
+        try {
+            const result = await API.getCurrentUser();
+            console.log(result.success)
+            console.log(result.data)
+
+            if (result.success) {
+                const user = result.data;
+                const userInfo = document.getElementById('userInfo');
+                userInfo.textContent = `${user.first_name || ''} ${user.last_name || ''} | ${user.username} (${user.role})`;
+
+                const userDetails = document.getElementById('userDetails');
+                userDetails.innerHTML = `
+                    <div class="user-card">
+                        <h3>Account Information</h3>
+                        <p>Username: ${user.username}</p>
+                        <p>Email: ${user.email}</p>
+                        <p>Full Name: ${user.first_name} ${user.last_name}</p>
+                        <p>Role: ${user.role}</p>
+                        <p>Account Status: ${user.is_active ? 'Active' : 'Inactive'}</p>
+                        <p>Member Since: ${new Date(user.created_at).toLocaleDateString()}</p>
+                    </div>
+                `;
+            } else {
+                TokenManager.clearTokens();
+                window.location.href = '/auth/login';
+            }
+        } catch (error) {
+            console.error('Error loading user data:', error);
+            TokenManager.clearTokens();
+            window.location.href = '/auth/login';
+        }
+    }
+
+    // JavaScript powered functions
+    async function handleLogout() {
+        if (confirm('Are you sure you want to logout?')) {
+            await API.logout();
+        }
+    }
+
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        // Require authentication
+        requireAuth();
+        loadUserData();
+    });
+</script>
+{% endblock %}

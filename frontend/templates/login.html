@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+    <div class="auth-card">
+        <h1 class="auth-card__title">Login</h1>
+
+        <!-- This form is handled by JavaScript-->
+        <form id="loginForm" class="auth-card__form">
+            <div class="form-group">
+                <label for="usernameOrEmail" class="form__label">Username or Email</label>
+                <input type="text" id="usernameOrEmail" class="form__input" required>
+            </div>
+            <div class="form-group">
+                <label for="password" class="form__label">Password</label>
+                <input type="password" id="password" class="form__input" required>
+            </div>
+            <div class="error-message" id="errorMessage" style="display: none;"></div>
+            <button type="submit" class="form__submit-btn" id="loginBtn">Login</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+    // Check if already logged in (Javascript)
+    redirectIfAuthenticated();
+
+    // JavaScript to handle form submission and error handling
+    document.getElementById('loginForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const loginBtn = document.getElementById('loginBtn');
+        const usernameOrEmail = document.getElementById('usernameOrEmail').value;
+        const password = document.getElementById('password').value;
+
+        // Show loading state
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Logging in...';
+
+        // This calls POST /auth/login endpoint
+        const result = await API.login(usernameOrEmail, password);
+
+        if (result.success) {
+            window.location.href = '/auth/dashboard';
+        } else {
+            document.getElementById('errorMessage').textContent = result.error;
+            document.getElementById('errorMessage').style.display = 'block';
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Login';
+        }
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+html {
+    box-sizing: border-box;
+}
+
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    color: #121723;
+}
+
+p {
+    margin: 0;
+    color: #121723;
+}
+
+img {
+    max-width: 100%;
+}
+
+/* Header */
+
+.header__container {
+    margin: 0 auto;
+    max-width: 1400px;
+}
+
+.nav-container {
+    display: flex;
+    padding: 20px;
+}
+
+.nav__title {
+    display: block;
+    margin-right: 100px;
+    max-width: fit-content;
+}
+
+.nav__links {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav__link {
+    padding: 10px;
+    background-color: blue;
+    color: white;
+    border-radius: 5px;
+}
