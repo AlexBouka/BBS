@@ -111,7 +111,7 @@ async def get_admin_user(
     :return: The currently authenticated user if the user is an administrator.
     :raises HTTPException: If the user is not an administrator.
     """
-    if current_user.role != UserRole.admin:
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"

@@ -30,10 +30,13 @@ img {
 .header__container {
     margin: 0 auto;
     max-width: 1400px;
+    background-color: rgb(29, 106, 206);
 }
 
 .nav-container {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 20px;
 }
 
@@ -52,7 +55,25 @@ img {
 
 .nav__link {
     padding: 10px;
-    background-color: blue;
+    background-color: rgb(13, 90, 161);
     color: white;
+    border-radius: 5px;
+}
+
+.container {
+    margin: 0 auto;
+    max-width: 1400px;
+}
+
+.auth-card {
+    padding: 20px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e0e0e0;
     border-radius: 5px;
 }

@@ -4,55 +4,27 @@ from uuid import UUID
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func
 from sqlalchemy.exc import IntegrityError
 
 from models import User, UserRole
 from schemas.user import (
-    UserCreate, UserResponse, UserDeleteResponse, UserLogin,
+    UserCreate, AdminCreate, UserResponse, UserDeleteResponse, UserLogin,
     PasswordConfirmationSchema)
 from schemas.jwt import TokenResponse, TokenRefresh
 from core.db_handler import db_handler
 from auth.pass_utils import pwd_utils
 from auth.jwt_utils import jwt_manager
-from auth.dependencies import get_current_user
+from auth.dependencies import get_current_user, get_admin_user
+
+from .utils import (
+    get_user_by_username, get_user_by_email,
+    get_user_by_username_or_email,
+    check_user_exists
+    )
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-# Setup templates
-templates = Jinja2Templates(directory="frontend/templates")
-
-# ===============================================================================
-# PAGE ROUTES (Serve HTML)
-# ===============================================================================
-
-
-@router.get("/register")
-async def register_page(request: Request):
-    return templates.TemplateResponse(
-        "register.html", {"request": request, "show_nav": True, "show_footer": True}
-        )
-
-
-@router.get("/login")
-async def login_page(request: Request):
-    return templates.TemplateResponse(
-        "login.html", {"request": request, "show_nav": True, "show_footer": True}
-        )
-
-
-@router.get("/dashboard")
-async def dashboard_page(request: Request):
-    return templates.TemplateResponse(
-        "dashboard.html", {"request": request, "show_nav": True, "show_footer": True}
-        )
-
-
-# ===============================================================================
-# API ROUTES (Return JSON)
-# ===============================================================================
+router = APIRouter(prefix="/api/auth", tags=["Authentication API"])
 
 
 # USER REGISTRATION, SOFT/HARD DELETION AND REACTIVATION ENDPOINTS (20-)
@@ -80,20 +52,16 @@ async def register_user(
     """
     try:
         # Check if username already exists
-        existing_username = await session.execute(
-            select(User).where(User.username == user_data.username)
-        )
-        if existing_username.scalar_one_or_none():
+        existing_username = await get_user_by_username(user_data.username, session)
+        if existing_username:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists."
             )
 
         # Check if email already exists
-        existing_email = await session.execute(
-            select(User).where(User.email == user_data.email)
-        )
-        if existing_email.scalar_one_or_none():
+        existing_email = await get_user_by_email(user_data.email, session)
+        if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already exists."
@@ -109,7 +77,7 @@ async def register_user(
             password_hash=hashed_password,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
-            phone_number=user_data.phoner_number,
+            phone_number=user_data.phone_number,
             is_active=True,
             is_verified=False
         )
@@ -139,6 +107,73 @@ async def register_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occured during registration: {e}"
+        )
+
+
+@router.post(
+    "/register/admin",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new admin user",
+    description="Create a new admin user account with email and username validation"
+)
+async def register_admin(
+    admin_data: AdminCreate,
+    session: AsyncSession = Depends(db_handler.session_dependency),
+    current_user: User = Depends(get_admin_user),
+):
+    """
+    Create a new admin user account with email and username validation.
+
+    This endpoint is restricted to administrators and requires a valid admin user to be authenticated.
+    The endpoint creates a new admin user account with the provided username, email, password, first name, last name, and phone number.
+    The endpoint also checks for existing usernames and emails before creating the new user account.
+
+    :param admin_data: AdminCreate instance containing the admin user's credentials.
+    :param current_user: The currently authenticated user.
+    :param session: The database session to use.
+    :return: A UserResponse object containing the created admin user's details.
+    :raises HTTPException: If the currently authenticated user is not an administrator, or if the username or email already exists.
+    :raises HTTPException: If an unexpected error occurs during admin registration.
+    """
+    try:
+        # Check if username or email already exist
+        if check_user_exists(admin_data.username, admin_data.email, session):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username or email already exists."
+            )
+
+        # Create admin user
+        admin = User(
+            username=admin_data.username,
+            email=admin_data.email,
+            password_hash=pwd_utils.hash_password(admin_data.password),
+            role=UserRole.ADMIN,
+            first_name=admin_data.first_name,
+            last_name=admin_data.last_name,
+            phone_number=admin_data.phone_number,
+            is_active=True,
+            is_verified=True  # Admins are pre-verified
+        )
+
+        session.add(admin)
+        await session.commit()
+        await session.refresh(admin)
+
+        logger.info(f"Admin user created: {admin.username} ({admin.email}) | by <{current_user.username}>.")
+
+        return admin
+
+    except HTTPException:
+        await session.rollback()
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Admin registration error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred during admin registration: {e}"
         )
 
 
@@ -214,7 +249,7 @@ async def delete_current_user(
 async def admin_delete_user(
     user_id: UUID,
     session: AsyncSession = Depends(db_handler.session_dependency),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_admin_user)
 ) -> UserDeleteResponse:
     """
     Admin endpoint to delete a user account by user ID (soft delete).
@@ -237,19 +272,12 @@ async def admin_delete_user(
 
     :param user_id: The ID of the user to be deleted.
     :param session: The database session to use.
-    :param current_user: The currently authenticated user.
+    :param current_user: The currently authenticated admin user.
     :return: A UserDeleteResponse object containing the deleted user's ID and username.
     :raises HTTPException: If the user to be deleted is not found, or if the current user is not an administrator,
         or if an unexpected error occurs while deleting the user account.
     """
     try:
-        # Check if current user is admin
-        if current_user.role != UserRole.ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only administrators can delete user accounts"
-            )
-
         # Fetch the user to be deleted
         target_user = await session.get(User, user_id)
         if not target_user:
@@ -305,7 +333,7 @@ async def admin_hard_delete_user(
     user_id: UUID,
     password_confirmation: PasswordConfirmationSchema,
     session: AsyncSession = Depends(db_handler.session_dependency),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_admin_user)
 ) -> dict:
     """
     Admin endpoint to permanently delete a user account.
@@ -327,13 +355,6 @@ async def admin_hard_delete_user(
     a 500 Internal Server Error response is returned.
     """
     try:
-        # Verify admin credentials
-        if current_user.role != UserRole.ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only administrators can perform hard deletions"
-            )
-
         # Verify admin password
         if not pwd_utils.verify_password(
                 password_confirmation.password, current_user.password_hash):
@@ -398,7 +419,7 @@ async def admin_hard_delete_user(
 async def admin_reactivate_user(
     user_id: UUID,
     session: AsyncSession = Depends(db_handler.session_dependency),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_admin_user)
 ) -> UserResponse:
     """
     Admin endpoint to reactivate a soft-deleted user account by user ID.
@@ -416,13 +437,6 @@ async def admin_reactivate_user(
     :raises HTTPException: If the user is not found, or if the user account is already active.
     """
     try:
-        # Check admin permissions
-        if current_user.role != UserRole.ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only administrators can reactivate user accounts"
-            )
-
         # Fetch the user to be reactivated
         user = await session.get(User, user_id)
         if not user:
@@ -495,16 +509,8 @@ async def login_user(
     """
     try:
         # Find user by username or email
-        print("Searching for:", login_data.username_or_email.lower())
-        result = await session.execute(
-            select(User).where(
-                or_(
-                    func.lower(User.username) == login_data.username_or_email.lower(),
-                    func.lower(User.email) == login_data.username_or_email.lower()
-                )
-            )
-        )
-        user = result.scalar_one_or_none()
+        user = await get_user_by_username_or_email(
+            login_data.username_or_email, session)
 
         if not user:
             raise HTTPException(

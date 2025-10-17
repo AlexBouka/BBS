@@ -8,7 +8,10 @@ from core.config import settings
 
 
 class DatabaseHandler:
-    def __init__(self, url: str = settings.postgres_async_db_url, echo: bool = settings.db_echo):
+    def __init__(
+            self, url: str = settings.postgres_async_db_url,
+            echo: bool = settings.db_echo
+            ):
         """
         Initialize the database handler with the given URL and echo setting.
 
@@ -43,11 +46,11 @@ class DatabaseHandler:
 
     async def session_dependency(self):
         """
-        A dependency that yields a database session and closes it when finished.
+        A dependency that yields a database session and removes it when finished.
 
         This dependency is a context manager that yields a database session when
-        entered, and closes the session when exited. This ensures that the session
-        is always properly closed, even if an exception is raised.
+        entered, and removes the session when exited. This ensures that the session
+        is always properly removed, even if an exception is raised.
 
         :yield: The database session to use.
         :rtype: AsyncSession

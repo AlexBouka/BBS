@@ -1,16 +1,16 @@
 import enum
 import uuid
 
-from sqlalchemy import Column, Integer, String, Enum, Boolean
+from sqlalchemy import Column, String, Enum, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 
 from core.database import Base
 
 
 class UserRole(enum.Enum):
-    CUSTOMER = "customer"
-    ADMIN = "admin"
-    STAFF = "staff"
+    CUSTOMER = "CUSTOMER"
+    ADMIN = "ADMIN"
+    STAFF = "STAFF"
 
 
 class User(Base):

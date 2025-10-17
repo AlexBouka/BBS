@@ -1,0 +1,22 @@
+{% extends "./base.html" %}
+
+{% block title %}Route - Bus Booking System{% endblock %}
+{% block extra_css %}
+
+<link rel="stylesheet" href="{{ url_for('static', path='/css/route.css') }}">
+
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <div class="route-card">
+        <h1 class="route-card__title">Route Details</h1>
+        <div class="route-card__route route">
+            <p id="loadingText" class="route__loading-text">Loading route details...</p>
+        </div>
+    </div>
+    <div class="error-message" id="errorMessage" style="display: none;"></div>
+</div>
+
+{% endblock %}

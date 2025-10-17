@@ -40,7 +40,7 @@ const API = {
     // Login user
     async login(usernameOrEmail, password) {
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -71,7 +71,7 @@ const API = {
     // Register new user
     async register(userData) {
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/register`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -92,6 +92,30 @@ const API = {
         }
     },
 
+    // Register new admin
+    async registerAdmin(adminData) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/register/admin`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(adminData)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Admin registration failed');
+            }
+
+            const data = await response.json();
+            return {success: true, data};
+        } catch (error) {
+            console.error('Admin registration error:', error);
+            return {success: false, error: error.message};
+        }
+    },
+
     // Refresh access token
     async refreshToken() {
         try {
@@ -101,7 +125,7 @@ const API = {
                 throw new Error('No refresh token available');
             }
 
-            const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -187,7 +211,7 @@ const API = {
     // Get current user info
     async getCurrentUser() {
         try {
-            const data = await this.request('/auth/me', {method: 'GET'});
+            const data = await this.request('/api/auth/me', {method: 'GET'});
             return {success: true, data};
         } catch (error) {
             return {success: false, error: error.message};
@@ -198,7 +222,7 @@ const API = {
     async logout() {
         try {
             // Call logout endpoint
-            await this.request('/auth/logout', {method: 'POST'});
+            await this.request('/api/auth/logout', {method: 'POST'});
 
             // Clear tokens
             TokenManager.clearTokens();
@@ -216,7 +240,11 @@ const API = {
     }
 };
 
-// Check authentication on protected pages
+
+/**
+ * Check if user is authenticated. If not authenticated, redirect to login page.
+ * This function should be called at the beginning of a page to ensure that only authenticated users can access the page.
+ */
 function requireAuth() {
     if (!TokenManager.isLoggedIn()) {
         console.log('Not authenticated, redirecting to login page...');
@@ -224,7 +252,52 @@ function requireAuth() {
     }
 }
 
-// Redirect to dashboard if already logged in (for login/ register pages)
+/**
+ * Check if user is authenticated and is admin. If not authenticated, redirect to login page.
+ * If authenticated but not an admin, redirect to routes page and display an access denied alert.
+ * If the API call to get the current user fails, clear tokens and redirect to login page.
+ */
+async function requireAdmin(path) {
+    if (!TokenManager.isLoggedIn()) {
+        console.log('Not authenticated, redirecting to login page...');
+        window.location.href = '/auth/login';
+        return;
+    }
+
+    // Check if user is admin by fetching current user
+    const result = await API.getCurrentUser();
+    if (result.success && result.data.role === 'ADMIN') {
+        return;
+    } else {
+        console.log('User is not admin, redirecting...');
+        alert('Access denied. Admin Priviliges required.');
+        window.location.href = path;
+        return;
+    }
+    // API.getCurrentUser().then(result => {
+    //     if (result.success && result.data.role) {
+    //         if (result.data.role !== 'admin') {
+    //             console.log('User is not admin, redirecting to rotes page...');
+    //             alert('Access denied. Admin Priviliges required.');
+    //             window.location.href = path;
+    //         }
+    //     } else {
+    //         TokenManager.clearTokens();
+    //         window.location.href = '/auth/login';
+    //     }
+    // }).catch(() => {
+    //     TokenManager.clearTokens();
+    //     window.location.href = '/auth/login';
+    // });
+}
+
+
+/**
+ * Redirect to main page if already authenticated.
+ * This function checks if the user is already authenticated using the TokenManager.
+ * If authenticated, it redirects the user to the main page.
+ * This function is useful to prevent authenticated users from accessing login pages.
+ */
 function redirectIfAuthenticated() {
     if (TokenManager.isLoggedIn()) {
         console.log('Already authenticated, redirecting to main page...');
@@ -232,9 +305,122 @@ function redirectIfAuthenticated() {
     }
 }
 
+
+/**
+ * Adds a new intermediate stop to the page.
+ * If stopData is provided, it will fill in the city, duration, and distance fields.
+ * Otherwise, it will leave the fields blank.
+ * @param {Object} stopData - Optional object with city, stop_duration_minutes, and distance_from_origin_km properties.
+ */
+function addStop(stopData = null) {
+    const stopsContainer = document.getElementById('stopsContainer');
+    const currentStops = stopsContainer.querySelectorAll('.stop-item');
+    const stopNumber = currentStops.length + 1;
+    
+    const city = stopData?.city || '';
+    const duration = stopData?.stop_duration_minutes || '';
+    const distance = stopData?.distance_from_origin_km || '';
+    
+    const stopHtml = `
+        <div class="stop-item" data-stop-id="${stopNumber}">
+            <div class="stop-header">
+                <h4>Stop ${stopNumber}</h4>
+                <button type="button" class="btn-remove-stop">
+                    Remove
+                </button>
+            </div>
+            <div class="form-section__form-row form-row">
+                <div class="form-row__form-group form-group">
+                    <label>City</label>
+                    <input type="text" class="stop-city" value="${city}" required>
+                </div>
+                <div class="form-row__form-group form-group">
+                    <label>Stop Duration (minutes)</label>
+                    <input type="number" class="stop-duration" value="${duration}" required min="1">
+                </div>
+                <div class="form-row__form-group form-group">
+                    <label>Distance from Origin (km)</label>
+                    <input type="number" class="stop-distance" value="${distance}" required min="0" step="0.1">
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('stopsContainer').insertAdjacentHTML('beforeend', stopHtml);
+}
+
+
+/**
+ * Removes a stop item from the DOM and renumbers the remaining stops.
+ * @param {string} stopId - The ID of the stop item to be removed.
+ */
+function removeStop(stopId) {
+    const stopElement = document.querySelector(`[data-stop-id="${stopId}"]`);
+    if (stopElement) {
+        stopElement.remove();
+
+        // Renumber remaining stops
+        const remainingStops = document.querySelectorAll('.stop-item');
+        remainingStops.forEach((stop, index) => {
+            const header = stop.querySelector('.stop-header h4');
+            header.textContent = `Stop ${index + 1}`;
+        });
+    }
+}
+
+
+/**
+ * Checks if the user is authenticated and is an admin, and
+ * activates or deactivates a button accordingly.
+ *
+ * @param {string} buttonId - The ID of the button to activate or deactivate.
+ * @returns {Promise<void>} - Resolves when the button has been activated or deactivated.
+ */
+async function checkAdminStatusForBtnActivation(buttonId) {
+    const button = document.getElementById(buttonId);
+    if (!TokenManager.isLoggedIn()) {
+        if (button) button.style.display = "none";
+        return;
+    }
+
+    const result = await API.getCurrentUser();
+    if (result.success && result.data.role === "ADMIN") {
+        if (button) button.style.display = "block";
+    } else {
+        if (button) button.style.display = "none";
+    }
+}
+
+
+async function isUserAdmin() {
+    if (!TokenManager.isLoggedIn()) return false;
+
+    const result = await API.getCurrentUser();
+    return result.success && result.data.role === "ADMIN";
+}
+
+
+/**
+ * Retrieves a route by its ID.
+ *
+ * @param {string} routeId - The ID of the route to retrieve.
+ * @returns {Promise<object>} - The retrieved route.
+ */
+
+async function getRoute(routeId) {
+    response = await fetch(`${API_BASE_URL}/api/routes/${routeId}`);
+    data = await response.json();
+    return data;
+}
+
 // Export for use in other files
 // Note: In browser, these are available globally:
-window.API = API;
-window.TokenManager = TokenManager;
-window.requireAuth = requireAuth;
-window.redirectIfAuthenticated = redirectIfAuthenticated;
+// window.API = API;
+// window.TokenManager = TokenManager;
+// window.requireAuth = requireAuth;
+// window.requireAdmin = requireAdmin;
+// window.redirectIfAuthenticated = redirectIfAuthenticated;
+
+export { 
+    API, API_BASE_URL, TokenManager, requireAuth, requireAdmin, isUserAdmin,
+    redirectIfAuthenticated, checkAdminStatusForBtnActivation, addStop, removeStop, getRoute };

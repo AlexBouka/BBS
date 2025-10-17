@@ -1,0 +1,171 @@
+{% extends "./base.html" %}
+
+{% block title %}Update Route - Bus Booking System{% endblock %}
+{% block extra_css %}
+
+<link rel="stylesheet" href="{{ url_for('static', path='/css/update_route.css') }}">
+
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <div class="form-card">
+        <h1 class="form-card__title">Update Route</h1>
+        <p class="form-card__subtitle">Update an existing bus route in the system</p>
+        <div class="form-card__loading-state" id="loadingState">
+            <p class="loading-state__text">Loading route data...</p>
+        </div>
+        <form id="updateRouteForm" class="form-card__form" style="display: none;">
+            <input type="hidden" id="routeId">
+
+            <!-- Basic Information -->
+            <div class="form__form-section form-section">
+                <h3 class="form-section__title">Basic Information</h3>
+                <div class="form-section__form-row form-row">
+                    <div class="form-row__form-group form-group">
+                        <label for="routeNumber">Route Number *</label>
+                        <input type="text" id="routeNumber" required>
+                    </div>
+                    <div class="form-row__form-group form-group">
+                        <label for="routeName">Route Name</label>
+                        <input type="text" id="routeName">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Route Details -->
+            <div class="form__form-section form-section">
+                <h3 class="form-section__title">Route Details</h3>
+                <div class="form-section__form-row form-row">
+                    <div class="form-row__form-group form-group">
+                        <label for="originCity">Origin City *</label>
+                        <input type="text" id="originCity" required>
+                    </div>
+                    <div class="form-row__form-group form-group">
+                        <label for="destinationCity">Destination City *</label>
+                        <input type="text" id="destinationCity" required>
+                    </div>
+                </div>
+                <div class="form-section__form-row form-row">
+                    <div class="form-row__form-group form-group">
+                        <label for="distanceKm">Distance (km) *</label>
+                        <input type="number" id="distanceKm" required min="1" step="1">
+                    </div>
+                    <div class="form-row__form-group form-group">
+                        <label for="durationMinutes">Duration (minutes) *</label>
+                        <input type="number" id="durationMinutes" required min="1" step="1">
+                    </div>
+                    <div class="form-row__form-group form-group">
+                        <label for="basePrice">Base Price *</label>
+                        <input type="number" id="basePrice" required min="1" step="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Intermediate Stops -->
+            <div class="form__form-section form-section">
+                <h3 class="form-section__title">Intermediate Stops</h3>
+                <p class="form-section__help-text">Add stops along the route (optional)</p>
+                <div class="form-section__stops-container stops-container" id="stopsContainer">
+                    <!-- Stops will be dynamically added here -->
+                </div>
+                <button class="form-section__btn" id="addStopBtn">+ Add Stop"</button>
+            </div>
+
+            <!-- Route Options -->
+            <div class="form__form-section form-section">
+                <h3 class="form-section__title">Route Options</h3>
+                <div class="form-section__form-row form-row">
+                    <div class="form-row__form-group form-group">
+                        <label for="status">Status</label>
+                        <select id="status">
+                            <option value="ACTIVE">Active</option>
+                            <option value="INACTIVE">Inactive</option>
+                            <option value="SEASONAL">Seasolnal</option>
+                            <option value="DELETED">Deleted</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-section__form-row form-row">
+                    <div class="form-row__form-group form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="isExpress">
+                            <span class="checkbox-group__text">Express Route</span>
+                        </label>
+                    </div>
+                    <div class="form-row__form-group form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="isOvernight">
+                            <span class="checkbox-group__text">Overnight Route</span>
+                        </label>
+                    </div>
+                    <div class="form-row__form-group form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="operatesDaily">
+                            <span class="checkbox-group__text">Operates Daily</span>
+                        </label>
+                    </div>
+
+                    <div class="form-row__additional-section additional-section" id="operatingDaysSection">
+                        <label>Operating Days</label>
+                        <div class="additional-section__checkbox-group">
+                            <label>
+                                <input type="checkbox" name="operatingDay" value="monday"> Monday
+                            </label>
+                            <label>
+                                <input type="checkbox" name="operatingDay" value="tuesday"> Tuesday
+                            </label>
+                            <label>
+                                <input type="checkbox" name="operatingDay" value="wednesday"> Wednesday
+                            </label>
+                            <label>
+                                <input type="checkbox" name="operatingDay" value="thursday"> Thursday
+                            </label>
+                            <label>
+                                <input type="checkbox" name="operatingDay" value="friday"> Friday
+                            </label>
+                            <label>
+                                <input type="checkbox" name="operatingDay" value="saturday"> Saturday
+                            </label>
+                            <label>
+                                <input type="checkbox" name="operatingDay" value="sunday"> Sunday
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="form__form-section form-section">
+                    <h3 class="form-section__title">Additional Information</h3>
+                    <div class="form-section__form-row form-row">
+                        <div class="form-row__form-group form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" rows="3"></textarea>
+                        </div>
+                        <div class="form-row__form-group form-group">
+                            <label for="notes">Notes</label>
+                            <textarea id="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Display -->
+                <div class="form__error-message error-message" id="errorMessage" style="display: none;"></div>
+
+                <div class="form__form-actions form-actions">
+                    <button class="form-actions__cancel-btn" id="cancelBtn" type="button">Cancel</button>
+                    <button class="form-actions__submit-btn" id="updateRouteBtn" type="submit">Update Route</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script type="module" src="/static/js/routes/update_route.js"></script>
+
+{% endblock %}
