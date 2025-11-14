@@ -66,7 +66,7 @@ class RouteBase(BaseModel):
 
     @field_validator("origin_city", "destination_city")
     @classmethod
-    def validate_origin_and_destination_cities(clas, value: str) -> str:
+    def validate_origin_and_destination_cities(cls, value: str) -> str:
         if not value or not value.strip():
             raise ValueError("Origin or destination city cannot be empty")
         return value.strip().title()
@@ -93,11 +93,37 @@ class RouteBase(BaseModel):
         return value
 
 
+class DepartureCreate(BaseModel):
+    departure_time: datetime
+    arrival_time: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
 class RouteCreate(RouteBase):
     """
     Route Create Schema
     """
     status: RouteStatus = RouteStatus.ACTIVE
+    departures: Optional[List[DepartureCreate]] = None
+
+
+class DepartureUpdate(BaseModel):
+    """
+    Departure Update Schema for route updates
+    """
+    original_index: Optional[int] = None
+    departure_time: datetime
+    arrival_time: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class RouteDepartureResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    departure_time: datetime
+    arrival_time: Optional[datetime] = None
+    status: str
 
 
 class RouteUpdate(BaseModel):
@@ -118,6 +144,7 @@ class RouteUpdate(BaseModel):
     operating_days: Optional[List[str]]
     description: Optional[str]
     notes: Optional[str]
+    departures: Optional[List[DepartureUpdate]]
 
 
 class RouteResponse(RouteBase):
@@ -135,6 +162,14 @@ class RouteResponse(RouteBase):
     estimated_duration_hours: float
     has_stops: bool
     total_stops: int
+    intermediate_stops: Optional[List[IntermediateStopSchema]]
+
+
+class RouteResponseWithDepartures(RouteResponse):
+    """
+    Route Response Schema
+    """
+    departures: Optional[List[RouteDepartureResponse]] = None
 
 
 class RouteListItem(BaseModel):

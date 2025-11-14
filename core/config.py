@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     admin_email: str
     admin_password: str
 
+    test_admin_username: str
+    test_admin_email: str
+    test_admin_password: str
+
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int
@@ -28,11 +32,20 @@ class Settings(BaseSettings):
     postgres_port: str
     postgres_db: str
 
+    postgres_test_user: str
+    postgres_test_password: str
+    postgres_test_host: str
+    postgres_test_port: str
+    postgres_test_db: str
+
     docker_postgres_user: str
     docker_postgres_password: str
     docker_postgres_db: str
     docker_pgadmin_email: str
     docker_pgadmin_password: str
+
+    # Creation of test-data flag
+    populate_test_data: str
 
     @property
     def postgres_sync_db_url(self) -> str:

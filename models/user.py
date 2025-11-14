@@ -3,6 +3,7 @@ import uuid
 
 from sqlalchemy import Column, String, Enum, Boolean
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from core.database import Base
 
@@ -30,9 +31,26 @@ class User(Base):
     # Additional user information
     first_name = Column(String(100))
     last_name = Column(String(100))
-    phone_number = Column(String(20))
+    phone_number = Column(String(30))
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+
+    created_routes = relationship(
+        "Route",
+        back_populates="created_by"
+        )
+
+    created_buses = relationship(
+        "Bus",
+        back_populates="created_by",
+        foreign_keys="Bus.created_by_id"
+        )
+
+    operated_buses = relationship(
+        "Bus",
+        back_populates="operator",
+        foreign_keys="Bus.operator_id"
+        )
 
     # created_at and updated_at fields are inherited from the Base class
 

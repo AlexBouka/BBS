@@ -9,18 +9,18 @@ from core.database import Base
 
 
 class BusType(enum.Enum):
-    MINIBUS = "minibus"
-    STANDARD = "stamdard"
-    LUXURY = "luxury"
-    SLEEPER = "sleeper"
-    MINIBUS_LUXURY = "minibus_luxury"
+    MINIBUS = "MINIBUS"
+    STANDARD = "STANDARD"
+    LUXURY = "LUXURY"
+    SLEEPER = "SLEEPER"
+    MINIBUS_LUXURY = "MINIBUS_LUXURY"
 
 
 class BusStatus(enum.Enum):
-    ACTIVE = "active"
-    MAINTENANCE = "maintenance"
-    INACTIVE = "inactive"
-    DELETED = "deleted"
+    ACTIVE = "ACTIVE"
+    MAINTENANCE = "MAINTENANCE"
+    INACTIVE = "INACTIVE"
+    DELETED = "DELETED"
 
 
 class Bus(Base):
@@ -63,14 +63,47 @@ class Bus(Base):
     operator_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
-    # Relationships
+    bus_routes = relationship(
+        "BusRoute",
+        back_populates="bus",
+        cascade="all, delete-orphan"
+    )
+
+    routes = relationship(
+        "Route",
+        secondary="bus_routes",
+        back_populates="buses",
+        overlaps="bus_routes"
+    )
+
+    seats = relationship(
+        "Seat",
+        back_populates="bus",
+        cascade="all, delete-orphan"
+        )
+
     created_by = relationship(
-        "User", foreign_keys=[created_by_id], backref="created_buses")
+        "User",
+        back_populates="created_buses",
+        foreign_keys=[created_by_id]
+        )
+
     operator = relationship(
-        "User", foreign_keys=[operator_id], backref="operated_buses")
+        "User",
+        foreign_keys=[operator_id],
+        back_populates="operated_buses"
+        )
+
+    departures = relationship(
+        "Departure",
+        back_populates="bus"
+    )
 
     def __repr__(self):
-        return f"<Bus(bus_number='{self.bus_number}', type='{self.bus_type.value}', capacity={self.capacity})>"
+        return (
+            f"<Bus(bus_number='{self.bus_number}', "
+            f"type='{self.bus_type.value}', capacity={self.capacity})>"
+        )
 
     @property
     def is_operational(self) -> bool:

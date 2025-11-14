@@ -1,21 +1,21 @@
-import logging
 from uuid import UUID
 from typing import List, Optional
+from datetime import timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 
-from models import User, Route, RouteStatus
+from models import User, Route, RouteStatus, Departure
 from schemas.route import (
     RouteCreate, RouteResponse, RouteListItem,
     RouteUpdate
 )
 from auth.dependencies import get_admin_user
 from core.db_handler import db_handler
-
-logger = logging.getLogger(__name__)
+from core.logging import logger
 
 router = APIRouter(prefix="/api/routes", tags=["Routes API"])
 
@@ -85,12 +85,47 @@ async def create_route(
         )
 
         session.add(new_route)
+        await session.flush()  # Get new_route.id before committing
+
+        # Create departures if provided
+        if route_data.departures:
+            for departure_data in route_data.departures:
+                # Calculate arrival time if not provided
+                arrival_time = departure_data.arrival_time
+                if not arrival_time:
+                    # Add route duration to departure time
+                    departure_datetime = departure_data.departure_time
+                    if departure_datetime.tzinfo is None:
+                        departure_datetime = departure_datetime.replace(
+                            tzinfo=timezone.utc)
+                    arrival_time = (
+                        departure_datetime +
+                        timedelta(minutes=new_route.duration_minutes)
+                    )
+
+                new_departure = Departure(
+                    route_id=new_route.id,  # Assign the newly created route's ID
+                    departure_time=departure_data.departure_time,
+                    arrival_time=arrival_time,
+                    notes=departure_data.notes
+                )
+
+                session.add(new_departure)
+
         await session.commit()
         await session.refresh(new_route)
 
+        stmt = (
+            select(Route)
+            .options(selectinload(Route.departures))
+            .where(Route.id == new_route.id)
+        )
+        result = await session.execute(stmt)
+        new_route_with_departures = result.scalar_one()
+
         logger.info(f"Route: {new_route.route_number} (from {new_route.origin_city} to {new_route.destination_city}) created successfully.")
 
-        return new_route
+        return new_route_with_departures
 
     except IntegrityError as e:
         await session.rollback()
@@ -118,7 +153,7 @@ async def create_route(
 )
 async def get_routes(
     offset: int = Query(0, ge=0),
-    limit: int = Query(16, ge=1, le=100),
+    limit: int = Query(10, ge=1, le=100),
     origin_city: Optional[str] = None,
     destination_city: Optional[str] = None,
     status_filter: Optional[RouteStatus] = Query(None, alias="status"),
@@ -193,7 +228,13 @@ async def get_route(
     Raises:
         HTTPException: If the route with the given ID is not found.
     """
-    route = await session.get(Route, route_id)
+    stmt = (
+        select(Route)
+        .where(Route.id == route_id)
+    )
+    result = await session.execute(stmt)
+    route = result.scalar_one_or_none()
+
     if not route:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -220,21 +261,94 @@ async def update_route(
 
     Args:
         route_id (UUID): The ID of the route to update.
-        route_data (RouteUpdate): The data to update the route with.
+        route_data (RouteUpdate): The updated route data.
 
     Returns:
         RouteResponse: The updated route.
 
     Raises:
         HTTPException: If the route with the given ID is not found.
+        HTTPException: If there is an unexpected error during route update.
     """
     try:
-        route = await session.get(Route, route_id)
+        stmt = (
+            select(Route)
+            .options(selectinload(Route.departures))
+            .where(Route.id == route_id)
+        )
+        result = await session.execute(stmt)
+        route = result.scalar_one_or_none()
         if not route:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Route with ID {route_id} not found."
             )
+
+        # Handle departures update using indices
+        if hasattr(route_data, 'departures') and route_data.departures is not None:
+            # Get current departures
+            current_departures = route.departures or []
+
+            # Create mapping of original indices to database departures
+            original_index_to_departure = {}
+            for i, dep in enumerate(current_departures):
+                original_index_to_departure[i] = dep
+
+            submitted_deps = route_data.departures or []
+
+            # Delete departures not in submitted list
+            submitted_indices = {
+                dep.original_index
+                for dep in submitted_deps
+                if dep.original_index is not None and dep.original_index >= 0
+            }
+            for i, dep in enumerate(current_departures):
+                if i not in submitted_indices:
+                    await session.delete(dep)
+
+            # Update existing departures and create new ones
+            for submitted in submitted_deps:
+                original_index = submitted.original_index
+
+                if original_index is not None and original_index >= 0:
+                    # Update existing departure
+                    dep = original_index_to_departure.get(original_index)
+                    if dep:
+                        dep.departure_time = submitted.departure_time
+                        if submitted.arrival_time is not None:
+                            dep.arrival_time = submitted.arrival_time
+                        else:
+                            # Calculate arival_time if not provided
+                            departure_datetime = submitted.departure_time
+                            if departure_datetime.tzinfo is None:
+                                departure_datetime = departure_datetime.replace(
+                                    tzinfo=timezone.utc
+                                )
+                            dep.arrival_time = departure_datetime + timedelta(
+                                minutes=route.duration_minutes
+                            )
+                        dep.notes = submitted.notes
+                else:
+                    # Create new departure
+                    departure_time = submitted.departure_time
+                    arrival_time = submitted.arrival_time
+                    if arrival_time is None:
+                        # Calculate arival_time if not provided
+                        if departure_time.tzinfo is None:
+                            departure_time = departure_time.replace(
+                                tzinfo=timezone.utc
+                            )
+                        arrival_time = departure_time + timedelta(
+                            minutes=route.duration_minutes
+                        )
+
+                    new_dep = Departure(
+                        route_id=route_id,
+                        departure_time=departure_time,
+                        arrival_time=arrival_time,
+                        notes=submitted.notes
+                    )
+                    session.add(new_dep)
 
         # Update route excluding fields that are not passed
         update_data = route_data.model_dump(exclude_unset=True)
@@ -244,6 +358,9 @@ async def update_route(
                 stop.model_dump() for stop in route_data.intermediate_stops
             ]
 
+        # Remove departures from update data to avoid conflicts
+        update_data.pop("departures", None)
+
         # Update route
         for key, value in update_data.items():
             setattr(route, key, value)
@@ -251,10 +368,20 @@ async def update_route(
         await session.commit()
         await session.refresh(route)
 
+        # Re-query route to get updated departures
+        requery_stmt = (
+            select(Route)
+            .options(selectinload(Route.departures))
+            .where(Route.id == route_id)
+        )
+
+        requery_result = await session.execute(requery_stmt)
+        updated_route = requery_result.scalar_one()
+
         logger.info(
             f"Route updated: {route.route_number} by {current_user.username}")
 
-        return route
+        return updated_route
 
     except HTTPException:
         await session.rollback()

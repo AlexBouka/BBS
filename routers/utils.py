@@ -89,6 +89,8 @@ async def check_user_exists(
         session: AsyncSession
 ) -> bool:
     user_by_username = await get_user_by_username(username, session)
+    if user_by_username:
+        return True
     user_by_email = await get_user_by_email(email, session)
 
-    return user_by_username or user_by_email
+    return user_by_email is not None

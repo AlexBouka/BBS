@@ -1,17 +1,17 @@
-import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Request, Depends, HTTPException, status
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from models import User, UserRole
 from schemas.user import (
-    UserCreate, AdminCreate, UserResponse, UserDeleteResponse, UserLogin,
-    PasswordConfirmationSchema)
+    UserCreate, AdminCreate, UserUpdate, UserResponse, UserDeleteResponse,
+    UserLogin,
+    PasswordConfirmationSchema, PasswordChangeSchema)
 from schemas.jwt import TokenResponse, TokenRefresh
 from core.db_handler import db_handler
+from core.logging import logger
 from auth.pass_utils import pwd_utils
 from auth.jwt_utils import jwt_manager
 from auth.dependencies import get_current_user, get_admin_user
@@ -21,8 +21,6 @@ from .utils import (
     get_user_by_username_or_email,
     check_user_exists
     )
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication API"])
 
@@ -43,8 +41,8 @@ async def register_user(
     Register a new user.
 
     This endpoint creates a new user account with email and username validation.
-     It will raise a 400 Bad Request error if the username or email already exists.
-     It will raise a 500 Internal Server Error if there is an error creating the user.
+    It will raise a 400 Bad Request error if the username or email already exists.
+    It will raise a 500 Internal Server Error if there is an error creating the user.
 
     :param user_data: UserCreate instance containing the user's details.
     :param session: AsyncSession instance to interact with the database.
@@ -104,9 +102,143 @@ async def register_user(
     except Exception as e:
         await session.rollback()
         logger.error(f"Unexpected error during registration: {e}")
+        if isinstance(e, HTTPException):
+            raise
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occured during registration: {e}"
+        )
+
+
+@router.put(
+    "/update-profile",
+    response_model=UserResponse,
+    summary="Update current user profile",
+    description="Update the profile information of the currently authenticated user"
+)
+async def update_current_user_profile(
+    user_data: UserUpdate,
+    session: AsyncSession = Depends(db_handler.session_dependency),
+    current_user: User = Depends(get_current_user)
+) -> UserResponse:
+    """
+    Update the profile information of the currently authenticated user.
+
+    This endpoint is used to update the profile information of the currently authenticated user.
+    It takes in a UserUpdate object containing the updated profile information.
+
+    If the username or email already exists, a 400 Bad Request response is returned with a detail message indicating that the username or email already exists.
+
+    If an unexpected error occurs while updating the user profile, a 500 Internal Server Error response is returned with a detail message indicating that an unexpected error occurred during profile update.
+
+    :param user_data: The updated profile information in a UserUpdate object.
+    :param session: The database session to use.
+    :param current_user: The currently authenticated user.
+    :return: The updated user object with the updated profile information.
+    :raises HTTPException: If the username or email already exists, or if an unexpected error occurs while updating the user profile.
+    """
+    try:
+        # Check for username uniqueness (exclude current user)
+        if user_data.username:
+            existing_user = await get_user_by_username(user_data.username, session)
+            if existing_user and existing_user.id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Username already exists."
+                )
+
+        # Check for email uniqueness (exclude current user)
+        if user_data.email:
+            existing_user = await get_user_by_email(user_data.email, session)
+            if existing_user and existing_user.id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already exists."
+                )
+
+        current_user.username = user_data.username if user_data.username else current_user.username
+        current_user.email = user_data.email if user_data.email else current_user.email
+        current_user.first_name = user_data.first_name if user_data.first_name else current_user.first_name
+        current_user.last_name = user_data.last_name if user_data.last_name else current_user.last_name
+        current_user.phone_number = user_data.phone_number if user_data.phone_number else current_user.phone_number
+
+        session.add(current_user)
+        await session.commit()
+        await session.refresh(current_user)
+
+        return current_user
+
+    except IntegrityError as e:
+        await session.rollback()
+        logger.error(f"Database integrity error during profile update: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already exists."
+        )
+
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Unexpected error during profile update: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occured during profile update: {e}"
+        )
+
+
+@router.put(
+    "/change-password",
+    summary="Change current user password",
+    description="Change the password of the currently authenticated user (requires current password confirmation)"
+)
+async def change_current_user_password(
+    password_data: PasswordChangeSchema,
+    session: AsyncSession = Depends(db_handler.session_dependency),
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """
+    Change the password of the currently authenticated user.
+
+    This endpoint takes in a PasswordChangeSchema object containing the current password and the new password.
+    It verifies the current password and then hashes the new password and updates the user's password hash in the database.
+
+    If the current password is incorrect, a 400 Bad Request response is returned with a detail message indicating that the current password is incorrect.
+
+    If an unexpected error occurs while changing the user's password, a 500 Internal Server Error response is returned with a detail message indicating that an unexpected error occurred during password change.
+
+    :param password_data: A PasswordChangeSchema object containing the current password and the new password.
+    :param session: The database session to use.
+    :param current_user: The currently authenticated user.
+    :return: A dictionary containing a message indicating that the password was changed successfully.
+    :raises HTTPException: If the current password is incorrect, or if an unexpected error occurs while changing the user's password.
+    """
+    try:
+        # Verify current password
+        if not pwd_utils.verify_password(
+            password_data.current_password, current_user.password_hash
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect."
+            )
+
+        # Hash the new password
+        hashed_new_password = pwd_utils.hash_password(password_data.new_password)
+        current_user.password_hash = hashed_new_password
+
+        session.add(current_user)
+        await session.commit()
+
+        logger.info(f"User password changed: {current_user.id} - <{current_user.username}>")
+        return {"message": "Password changed successfully."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Unexpected error during password change: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occured during password change: {e}"
         )
 
 
@@ -138,7 +270,9 @@ async def register_admin(
     """
     try:
         # Check if username or email already exist
-        if check_user_exists(admin_data.username, admin_data.email, session):
+        potential_user = await check_user_exists(
+            admin_data.username, admin_data.email, session)
+        if potential_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username or email already exists."
@@ -672,7 +806,8 @@ async def logout_user(
     summary="Get current user info",
     description="Get information about the currently authenticated user"
 )
-async def get_current_user_info(current_user: User = Depends(get_current_user)) -> UserResponse:
+async def get_current_user_info(
+        current_user: User = Depends(get_current_user)) -> UserResponse:
     """
     Get information about the currently authenticated user.
 

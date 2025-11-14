@@ -40,11 +40,36 @@ class Route(Base):
     notes = Column(Text, nullable=True)
 
     created_by_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    created_by = relationship("User", backref="created_routes")
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        )
+    # created_by = relationship("User", backref="created_routes")
+    created_by = relationship("User", back_populates="created_routes")
+
+    departures = relationship(
+        "Departure",
+        back_populates="route",
+        cascade="all, delete-orphan"
+        )
+
+    bus_routes = relationship(
+        "BusRoute",
+        back_populates="route",
+        cascade="all, delete-orphan"
+        )
+
+    buses = relationship(
+        "Bus",
+        secondary="bus_routes",
+        back_populates="routes",
+        overlaps="bus_routes"
+        )
 
     def __repr__(self):
-        return f"<Route(route_number='{self.route_number}', {self.origin_city}→{self.destination_city})>"
+        return (
+            f"<Route(route_number='{self.route_number}', "
+            f"{self.origin_city}→{self.destination_city})>"
+        )
 
     @property
     def is_operational(self) -> bool:
@@ -56,10 +81,10 @@ class Route(Base):
 
     @property
     def has_stops(self) -> bool:
-        return self.intermediate_stops and len(self.intermediate_stops) > 0
+        return self.intermediate_stops is not None and len(self.intermediate_stops) > 0
 
     @property
-    def total_stops(self):
+    def total_stops(self) -> int:
         if not self.intermediate_stops:
             return 0
         return len(self.intermediate_stops)
