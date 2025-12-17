@@ -371,7 +371,11 @@ async function loadRoutes() {
 //   }
 // }
 
-// Handle form submission
+/**
+ * Handles the bus creation form submission by preparing the rows, checking for duplicate routes and departures, building the bus data, and calling the API to create the bus.
+ * If an error occurs during the API call, it will be logged to the console and displayed to the user.
+ * If the bus is created successfully, the user will be redirected to /buses.
+ */
 async function handleBusCreation() {
   submitting.value = true;
   error.value = '';

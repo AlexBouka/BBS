@@ -50,13 +50,29 @@
                     </p>
                   </div>
                 </div>
-                <div class="route-info__additional-options-wrapper">
-                  <p class="route-info__text">
-                    Express: {{ route.is_express ? 'Yes' : 'No' }}
-                  </p>
-                  <p class="route-info__text">
-                    Overnight: {{ route.is_overnight ? 'Yes' : 'No' }}
-                  </p>
+                <div class="route-info__additional-options-wrapper additional-options">
+                  <div class="additional-options__express-wrapper">
+                    <p :class="route.is_express ? 'route-info__express-true' : 'route-info__express-false'">
+                      Express
+                      <svg v-if="route.is_express" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </p>
+                  </div>
+                  <div class="additional-options__overnight-wrapper">
+                    <p :class="route.is_overnight ? 'route-info__overnight-true' : 'route-info__overnight-false'">
+                      Overnight
+                      <svg v-if="route.is_overnight" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </p>
+                  </div>
                 </div>
               </div>
               <div class="route-info__calendar calendar">
@@ -119,22 +135,52 @@
               <div v-if="upcomingDeparturesLoading" class="route-info__departures-loading-state">
                 <p class="departures-loading-state__text">Loading departures...</p>
               </div>
-              <div v-else-if="upcomingDepartures && upcomingDepartures.length" class="route-info">
-                <h3 class="route-info__title">Departures</h3>
-                <ul class="route-info__departures-list">
-                  <li v-for="departure in upcomingDepartures" :key="departure.id" class="departures-list__departures-item">
-                    <p class="departures-item__departure-time">
-                      Departure Time: {{ formatLocalTime(departure.departure_time) }}
-                    </p>
-                    <p class="departures-item__arrival-time">
-                      Arrival Time: {{ departure.arrival_time ? formatLocalTime(departure.arrival_time) : 'N/A' }}
-                    </p>
-                    <p class="departures-item__status">
-                      Status: {{ departure.status }}
-                    </p>
-                    <p class="departures-item__is-full">
-                      {{ departure.is_full ? 'Full' : 'Available' }}
-                    </p>
+              <div v-else-if="upcomingDepartures && upcomingDepartures.length" class="route-info__upcoming-departures upcoming-departures-wrapper">
+                <h3 class="upcoming-departures__title">Departures for upcoming week</h3>
+                <ul class="upcoming-departures__departures-list">
+                  <li v-for="departure in upcomingDepartures" :key="departure.id" class="departures-list__departures-item departure-item">
+                    <div class="departure-item__departure-arrival-datetime-wrapper departure-arrival-datetime-wrapper">
+                      <div class="departure-datetime-wrapper">
+                        <h5 class="departure-item__title">Departure</h5>
+                        <p class="departure-item__departure-date">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 7V3M16 7V3M7 11H17M5 21H19C20.1046 21 21 20.1046 21 19V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V19C3 20.1046 3.89543 21 5 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          {{ formatLocalDate(departure.departure_time) }}
+                        </p>
+                        <p class="departure-item__departure-time">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          {{ formatLocalTime(departure.departure_time) }}
+                        </p>
+                      </div>
+                      <div class="arrival-datetime-wrapper">
+                        <h5 class="departure-item__title">Arrival</h5>
+                        <p class="departure-item__arrival-date">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 7V3M16 7V3M7 11H17M5 21H19C20.1046 21 21 20.1046 21 19V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V19C3 20.1046 3.89543 21 5 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          {{ departure.arrival_time ? formatLocalDate(departure.arrival_time) : 'N/A' }}
+                        </p>
+                        <p class="departure-item__arrival-time">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          {{ departure.arrival_time ? formatLocalTime(departure.arrival_time) : 'N/A' }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="departure-item__status-wrapper">
+                      <p class="departures-item__status">
+                        Status: {{ departure.status }}
+                      </p>
+                      <p :class="departure.is_full ? 'departure-item__available-false' : 'departure-item__available-true'">
+                        {{ departure.is_full ? 'Full' : 'Available' }}
+                      </p>
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -200,6 +246,13 @@ const daysInMonth = computed(() => {
   return new Date(year, month + 1, 0).getDate();
 });
 
+/**
+ * Fetches route data from the API and updates the component state accordingly.
+ *
+ * If the fetch is successful, it updates the route, isAdmin, and operatingDays state.
+ * If the fetch fails, it sets the error state to the error message.
+ * In either case, it sets the loading state to false.
+ */
 const loadRouteData = async () => {
   try {
     const data = await getRoute(routeId);
@@ -218,6 +271,11 @@ const loadRouteData = async () => {
   }
 };
 
+/**
+ * Fetches the upcoming departures for a route from the API and updates the component state accordingly.
+ * If the fetch is successful, it updates the upcomingDepartures state with the fetched data and sets the upcomingDeparturesLoading state to false.
+ * If the fetch fails, it logs an error message to the console.
+ */
 const loadUpcomingDepartures = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/departures/by_route/${routeId}/upcoming`);
@@ -234,7 +292,15 @@ const loadUpcomingDepartures = async () => {
   }
 };
 
-// Calendar functions
+
+/**
+ * Fetches the departure dates for a route from the API for a specific year and month.
+ * Updates the component state with the fetched data.
+ * If the fetch is successful, it updates the departureDates state with the fetched data.
+ * If the fetch fails, it logs an error message to the console.
+ * @param {number} year - The year for which to fetch the departure dates
+ * @param {number} month - The month for which to fetch the departure dates
+ */
 const fetchCalendarDates = async (year, month) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/departures/by_route/${routeId}/calendar/${year}/${month + 1}`);
@@ -249,6 +315,12 @@ const fetchCalendarDates = async (year, month) => {
   }
 };
 
+/**
+ * Changes the current month for the calendar by the specified direction.
+ * @param {number} direction - The direction to change the month (1 for next month, -1 for previous month)
+ * @returns {Promise<void>} - A promise that resolves when the month has been changed and the calendar dates have been fetched.
+ */
+
 const changeMonth = async (direction) => {
   const newDate = new Date(currentMonth.value);
   newDate.setMonth(newDate.getMonth() + direction);
@@ -262,10 +334,21 @@ const changeMonth = async (direction) => {
   selectedDateDepartures.value = [];
 };
 
+/**
+ * Checks if there are any departures for a given date.
+ * @param {Date} date - The date to check for departures
+ * @returns {boolean} - True if there are departures for the date, false otherwise
+ */
 const hasDepartures = (date) => {
   return departureDates.value.some(departureDate => departureDate.toDateString() === date.toDateString());
 };
 
+/**
+ * Selects a date and fetches the departures for that date.
+ * @param {Date} date - The date to select
+ * @returns {Promise<void>} - A promise that resolves when the selected date has been changed and the daily departures have been fetched.
+ * @throws {Error} - If there is an error fetching the daily departures
+ */
 const selectDate = async (date) => {
   selectedDate.value = date;
   selectedDateDepartures.value = [];
@@ -294,6 +377,11 @@ const selectDate = async (date) => {
   }
 };
 
+/**
+ * Returns a string representing the month of the given date in long format (e.g. 'January', 'February', etc.).
+ * @param {Date} date - The date to format
+ * @returns {string} - The formatted month string
+ */
 const formatMonth = (date) => {
   return date.toLocaleDateString(
     'en-US',
@@ -304,6 +392,11 @@ const formatMonth = (date) => {
   );
 };
 
+/**
+ * Returns a string representing the given date in the format 'Weekday, Month Day, Year'.
+ * @param {Date} date - The date to format
+ * @returns {string} - The formatted date string
+ */
 const formatDate = (date) => {
   return date.toLocaleDateString(
     'en-US',
@@ -316,6 +409,11 @@ const formatDate = (date) => {
   )
 };
 
+/**
+ * Returns a string representing the given date in the format 'HH:MM'.
+ * @param {string} dateString - The date string to format
+ * @returns {string} - The formatted time string
+ */
 const formatTime = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleTimeString(
@@ -327,7 +425,13 @@ const formatTime = (dateString) => {
   )
 };
 
-const formatLocalTime = (utcString) => {
+/**
+ * Returns a string representing the given UTC date string in the local timezone.
+ * If the utcString is falsy, returns an empty string.
+ * @param {string} utcString - The UTC date string to format
+ * @returns {string} - The formatted local date string
+ */
+const formatLocalDateTime = (utcString) => {
   if (!utcString) return '';
   const utcDate = new Date(utcString);
   const offsetMs = new Date().getTimezoneOffset() * -60 * 1000;
@@ -335,10 +439,32 @@ const formatLocalTime = (utcString) => {
   return localDate.toLocaleString();
 };
 
+const formatLocalDate = (utcString) => {
+  if (!utcString) return '';
+  const utcDate = new Date(utcString);
+  const offsetMs = new Date().getTimezoneOffset() * -60 * 1000;
+  const localDate = new Date(utcDate.getTime() - offsetMs);
+  return localDate.toLocaleDateString();
+};
+
+const formatLocalTime = (utcString) => {
+  if (!utcString) return '';
+  const utcDate = new Date(utcString);
+  const offsetMs = new Date().getTimezoneOffset() * -60 * 1000;
+  const localDate = new Date(utcDate.getTime() - offsetMs);
+  return localDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 const handleUpdate = () => {
   router.push(`/routes/update/${routeId}`);
 };
 
+/**
+ * Deletes the route with the given ID.
+ *
+ * @returns {Promise<void>} - A promise that resolves when the route has been deleted successfully.
+ * @throws {Error} - If an error occurs during the deletion process.
+ */
 const handleDelete = async () => {
   if (confirm('Are you sure you want to delete this route?')) {
     try {
@@ -385,7 +511,7 @@ onMounted(async () => {
 }
 
 .route {
-  background-color: #e3e7e7;
+  background-color: #f7f7ed;
   padding: 10px;
 }
 
@@ -397,6 +523,7 @@ onMounted(async () => {
 
 .route-details-wrapper {
   width: 100%;
+  margin-bottom: 20px;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -421,8 +548,38 @@ onMounted(async () => {
 }
 
 .route-info__additional-options-wrapper {
+  padding: 10px;
   display: flex;
   justify-content: space-between;
+  background-color: #f6f9fa;
+  border: 1px solid #d9dde0;
+  border-radius: 5px;
+}
+
+.additional-options__express-wrapper {
+  margin: 0;
+}
+
+.route-info__express-true,
+.route-info__overnight-true,
+.route-info__express-false,
+.route-info__overnight-false {
+  margin: 0;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 20px;
+}
+
+.route-info__express-true, .route-info__overnight-true {
+  background-color: green;
+}
+
+.route-info__express-false, .route-info__overnight-false {
+  background-color: red;
 }
 
 .intermediate-stops {
@@ -463,13 +620,12 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
 }
 
-.calendar__header h3 {
+.calendar__header h4 {
   margin: 0;
   color: #333;
-  font-size: 1.5rem;
+  font-size: 22px;
   font-weight: 600;
 }
 
@@ -592,18 +748,99 @@ onMounted(async () => {
   font-style: italic;
 }
 
-.departure-item {
-  padding: 0.75rem;
-  margin: 0.5rem 0;
-  background: white;
-  border-radius: 6px;
-  border: 1px solid #e9ecef;
+.upcoming-departures {
+  margin: 0;
+}
+
+.upcoming-departures-wrapper {
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.upcoming-departures__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.upcoming-departures__departures-list {
+  padding: 0;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  list-style: none;
+}
+
+.departure-item {
+  padding: 10px;
+  border: 1px solid white;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.departure-arrival-datetime-wrapper {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+.departure-datetime-wrapper,
+.arrival-datetime-wrapper {
+  padding: 5px;
+  background-color: #bbdefb;
+  border-radius:  5px;
+}
+
+.departure-item__title,
+.departure-item__departure-date,
+.departure-item__departure-time,
+.departure-item__arrival-date,
+.departure-item__arrival-time,
+.departure-item__status {
+  margin: 0;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.departure-item__departure-time,
+.departure-item__arrival-time {
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.departure-item__status-wrapper {
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
+  gap: 10px;
+}
+
+.departures-item__is-full {
+  margin: 0;
+}
+
+.departure-item__available-false,
+.departure-item__available-true {
+  margin: 0;
+  padding: 5px;
+  color: white;
+  border-radius: 5px;
+}
+
+.departure-item__available-false {
+  background-color: red;
+}
+
+.departure-item__available-true {
+  background-color: green;
 }
 
 .departure-item:hover {
+  background-color: #f1f3f5;
+  border: 1px solid #bad1e5;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>

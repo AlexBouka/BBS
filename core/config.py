@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Creation of test-data flag
     populate_test_data: str
 
+    schedule_delay_minutes: int = 5
+    schedule_interval_minutes: int = 5
+
     @property
     def postgres_sync_db_url(self) -> str:
         """Get a database URL for a synchronous PostgreSQL connection.

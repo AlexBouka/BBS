@@ -76,6 +76,12 @@ const error = ref('');
 
 const busId = window.location.pathname.split('/').pop();
 
+/**
+ * Loads bus data by its ID and sets the bus state to the loaded data.
+ * If there is an error, it sets the error state to the error message.
+ * Finally, it sets the loading state to false.
+ * @returns {Promise<void>} - A promise that resolves when the data is loaded.
+ */
 const loadBusData = async () => {
   try {
     const data = await getBus(busId);
@@ -91,6 +97,12 @@ const amenitiesFormatted = computed(() => {
   return bus.value.amenities_list ? bus.value.amenities_list.join(', ') : 'None';
 });
 
+/**
+ * Returns a string representing the given UTC date string in the local timezone.
+ * If the utcString is falsy, returns an empty string.
+ * @param {string} utcString - The UTC date string to format
+ * @returns {string} - The formatted local date string
+ */
 const formatLocalTime = (utcString) => {
   if (!utcString) {
     return '';
@@ -106,6 +118,15 @@ const handleUpdate = () => {
   router.push(`buses/update/${busId}`);
 };
 
+/**
+ * Deletes a bus by its ID. If the deletion is successful, it will
+ * display a success alert and redirect the user to /buses.
+ * If there is an error during deletion, it will display an error
+ * alert with the error message or a generic error message if the
+ * error message is unavailable.
+ * @returns {Promise<void>} - A promise that resolves when the deletion
+ * is complete.
+ */
 const handleDelete = async () => {
   if (confirm('Are you sure you want to delete this bus?')) {
     try {

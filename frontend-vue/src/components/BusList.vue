@@ -137,6 +137,11 @@ const filters = ref({
 const startItem = computed(() => (currentPage.value - 1) * pageSize + 1);
 const endItem = computed(() => startItem.value + pageSize - 1);
 
+/**
+ * Loads a page of buses.
+ * @param {number} [page=1] - The page of buses to load.
+ * @returns {Promise<void>} - A promise that resolves when the buses have been loaded.
+ */
 const loadBuses = async (page = 1) => {
   loading.value = true;
   try {
@@ -175,6 +180,7 @@ const loadBuses = async (page = 1) => {
 };
 
 const applyFilters = () => loadBuses(1);
+
 const clearFilters = () => {
   filters.value = {
     bus_number: '',

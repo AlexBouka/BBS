@@ -104,6 +104,12 @@ const filters = ref({
 const startItem = computed(() => (currentPage.value - 1) * pageSize + 1);
 const endItem = computed(() => startItem.value + pageSize - 1);
 
+/**
+ * Loads a page of routes with optional filters.
+ *
+ * @param {number} page - The page number to load (default 1).
+ * @returns {Promise<void>} - A promise that resolves when the routes have been loaded.
+ */
 const loadRoutes = async (page = 1) => {
   loading.value = true;
   try {

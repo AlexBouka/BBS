@@ -335,7 +335,13 @@ const removeDeparture = (index) => {
   departures.value.splice(index, 1);
 };
 
-// Handle form submission
+/**
+ * Handles creating a new route. Validates operating days, prepares
+ * intermediate stops and departures, builds route data, and calls
+ * the API to create the route.
+ *
+ * @throws {Error} If the API call fails.
+ */
 const handleCreateRoute = async () => {
   loading.value = true;
   error.value = '';

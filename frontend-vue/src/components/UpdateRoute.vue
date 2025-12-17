@@ -323,7 +323,11 @@ onMounted(async () => {
   await loadRouteData();
 });
 
-// Fetch and prefill route data
+/**
+ * Loads route data from the API and prefills the form and intermediate stops/departures arrays.
+ * Sets the loading state to true before making the request and false after receiving the response.
+ * If an error occurs, sets the error message to the error reference.
+ */
 async function loadRouteData() {
   try {
     const routeData = await API.request(`/api/routes/${routeId.value}`, {method: 'GET'});
@@ -399,7 +403,12 @@ function removeDeparture(index) {
   departures.value.splice(index, 1);
 }
 
-// Handle form submission
+/**
+ * Handles the route update form submission by preparing the intermediate stops and departures,
+ * building the route update data, and calling the API to update the route.
+ * If an error occurs, sets the error message to the error reference.
+ * If the request is successful, shows a success alert and redirects the user to /routes.
+ */
 async function handleUpdateRoute() {
   submitting.value = true;
   error.value = '';

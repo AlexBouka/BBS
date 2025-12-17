@@ -39,6 +39,14 @@ onMounted(() => {
   document.title = 'Login - Bus Management System';
 });
 
+/**
+ * Handles the login form submission.
+ * 
+ * Sets the loading state to true, clears any error messages, and then attempts to login the user using the provided username or email and password.
+ * If the login is successful, redirects the user to the /auth/dashboard page.
+ * If the login fails, sets an error message and sets the loading state to false.
+ * If an unexpected error occurs, sets an error message and sets the loading state to false.
+ */
 const handleLogin = async () => {
   loading.value = true;
   error.value = '';

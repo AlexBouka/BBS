@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class DepartureStatus(str, enum.Enum):
@@ -106,10 +106,22 @@ class DepartureResponsePublic(BaseModel):
     bus_number: Optional[str] = None
     bus_type: Optional[str] = None
     capacity: Optional[int] = None
+    has_wifi: Optional[bool] = None
+    has_ac: Optional[bool] = None
+    has_tv: Optional[bool] = None
+    has_charging_ports: Optional[bool] = None
+    has_refreshments: Optional[bool] = None
+    is_accessible: Optional[bool] = None
 
     route_number: Optional[str] = None
     origin_city: Optional[str] = None
     destination_city: Optional[str] = None
+
+
+class DepartureUpdateStatus(BaseModel):
+    status: DepartureStatus = Field(
+        ..., description="The new status for the departure")
+    notes: Optional[str] = Field(None, description="Notes for the departure")
 
 
 class RouteDepartureResponse(DepartureBase):

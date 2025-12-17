@@ -8,12 +8,68 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.db_handler import db_handler
+from core.logging import logger
 from auth.dependencies import get_admin_user
 from models import Departure, User, DepartureStatus
-from schemas.departure import DepartureResponse, DepartureResponsePublic
+from schemas.departure import DepartureResponse, DepartureResponsePublic, DepartureUpdateStatus
 
 
 router = APIRouter(prefix="/api/departures", tags=["Departures API"])
+
+VALID_TRANSITIONS = {
+    DepartureStatus.SCHEDULED: [
+        DepartureStatus.DEPARTED,
+        DepartureStatus.DELAYED,
+        DepartureStatus.CANCELLED
+    ],
+    DepartureStatus.DEPARTED: [
+        DepartureStatus.ARRIVED
+    ],
+    DepartureStatus.ARRIVED: [],
+    DepartureStatus.CANCELLED: [],
+    DepartureStatus.DELAYED: [
+        DepartureStatus.DEPARTED,
+        DepartureStatus.CANCELLED
+    ]
+}
+
+
+@router.put(
+    "/{departure_id}/status",
+    response_model=DepartureResponse,
+    summary="Update the status of a departure",
+    description="Update the status of a departure based on the provided departure_id"
+)
+async def update_departure_status(
+    departure_id: UUID,
+    status_update: DepartureUpdateStatus,
+    session: AsyncSession = Depends(db_handler.session_dependency),
+    current_user: User = Depends(get_admin_user)
+):
+    departure = await session.get(Departure, departure_id)
+    if not departure:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Departure not found"
+        )
+
+    if status_update.status not in VALID_TRANSITIONS.get(departure.status, []):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status transition from {departure.status.value} to {status_update.status.value}"
+        )
+
+    old_status = departure.status
+    departure.status = status_update.status
+    if status_update.notes:
+        departure.notes = status_update.notes
+
+    await session.commit()
+    await session.refresh(departure)
+
+    logger.info(f"Departure {departure_id} status updated from {old_status.value} to {departure.status.value} by user {current_user.id}")
+
+    return departure
 
 
 @router.get(

@@ -364,7 +364,15 @@ async function onRouteChange(index) {
   assignment.loading = false;
 }
 
-// Fetch and prefill bus data
+/**
+ * Loads bus data and prefills form with it.
+ * Also loads routes and sets current selection, if available.
+ * If bus data has route_ids and departure_ids, it will load the corresponding 
+ * departures for each route and set the current selection.
+ * If bus data has rows, it will prefill the rows with it.
+ * Error is caught and displayed if there is an error loading bus data.
+ * Finally, it sets loading to false.
+ */
 async function loadBusData() {
   try {
     const busData = await API.request(`/api/buses/${busId.value}`, { method: 'GET' });
@@ -434,7 +442,11 @@ async function loadBusData() {
   }
 }
 
-// Load routes
+/**
+ * Loads all active routes from the API and sets the current selection if selectedRouteId is provided.
+ * If an error occurs while loading the routes, it will be logged to the console.
+ * @param {string} selectedRouteId - The route ID to select after loading the routes (optional).
+ */
 async function loadRoutes(selectedRouteId = null) {
   try {
     const params = new URLSearchParams({ status: 'ACTIVE' });
@@ -458,7 +470,11 @@ function removeRow(index) {
   rows.value.splice(index, 1);
 }
 
-// Handle form submission
+/**
+ * Handles the bus update form submission by preparing the rows, checking for duplicate routes and departures, building the bus data, and calling the API to update the bus.
+ * If an error occurs during the API call, it will be logged to the console and displayed to the user.
+ * If the bus is updated successfully, the user will be redirected to /buses.
+ */
 async function handleUpdateBus() {
   submitting.value = true;
   error.value = '';

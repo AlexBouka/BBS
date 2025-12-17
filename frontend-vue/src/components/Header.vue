@@ -12,6 +12,7 @@
           <router-link to="/auth/login">Login</router-link>
         </li>
         <li><router-link to="/routes">Routes</router-link></li>
+        <li><router-link to="/departures">Departures</router-link></li>
         <!-- Add more links as needed -->
       </ul>
     </nav>
@@ -20,12 +21,14 @@
 
 <script>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { API, TokenManager } from '../../../frontend/static/js/api.js';
 
 export default {
   name: 'Header',
   setup() {
     const isAuthenticated = ref(false);
+    const router = useRouter();
 
     const checkAuth = () => {
       isAuthenticated.value = TokenManager.isLoggedIn();
@@ -35,7 +38,7 @@ export default {
       try {
         await API.logout();
         checkAuth();
-        window.location.href = '/auth/login'; // Redirect after logout
+        router.push('/auth/login'); // Redirect after logout
       } catch (error) {
         console.error('Logout failed:', error);
       }

@@ -20,6 +20,7 @@ from core.exception_handlers import (
     generic_exception_handler
 )
 from core.logging import logger
+from core.scheduler import start_scheduler, shutdown_scheduler
 from routers.auth_api import router as auth_api_router
 from routers.route_api import router as route_api_router
 from routers.departure_api import router as departure_api_router
@@ -66,7 +67,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"Warning: Failed to populate test data: {e}")
 
+    # Start scheduler
+    start_scheduler()
+
     yield
+
+    # Shutdown scheduler
+    shutdown_scheduler()
 
     # Shutdown
     async with db_handler.engine.begin() as conn:

@@ -6,6 +6,7 @@ import RegisterAdmin from './components/RegisterAdmin.vue';
 import RouteList from './components/RouteList.vue';
 import Route from './components/Route.vue';
 import CreateRoute from "./components/CreateRoute.vue";
+import Departures from "./components/Departures.vue";
 import CreateBus from "./components/CreateBus.vue";
 import Dashboard from "./components/Dashboard.vue";
 import UpdateRoute from "./components/UpdateRoute.vue";
@@ -55,6 +56,11 @@ const routes = [
         name: 'UpdateRoute',
         component: UpdateRoute,
         props: true
+    },
+    {
+        path: '/departures',
+        name: 'Departures',
+        component: Departures
     },
     {
         path: '/buses/create',
